@@ -1,0 +1,51 @@
+{
+  "name": "nietemo",
+  "version": "1.0.0",
+  "description": "Official TypeScript & JavaScript Client SDK for Nietemo BaaS and Mobile Money",
+  "author": "Nietemo Team",
+  "license": "MIT",
+  "keywords": [
+    "nietemo",
+    "flit",
+    "baas",
+    "database",
+    "mobile-money",
+    "orangemoney",
+    "mtn-momo",
+    "wave",
+    "africa",
+    "fintech",
+    "sdk"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
