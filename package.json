@@ -1,6 +1,6 @@
 {
   "name": "nietemo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Official TypeScript & JavaScript Client SDK for Nietemo BaaS and Mobile Money",
   "author": "Nietemo Team",
   "license": "MIT",
