@@ -112,10 +112,15 @@ export class NietemoClient {
     // CRITICAL ANTI-LEAK SECURITY GUARD:
     // Prevent catastrophic leakage of master secret keys into client-side bundles.
     // -------------------------------------------------------------------------
-    if (typeof window !== 'undefined' && this.apiKey && this.apiKey.startsWith('flit_sk_')) {
+    // `nietemo_sk_` is the current prefix; `flit_sk_` is the legacy one and stays blocked.
+    if (
+      typeof window !== 'undefined' &&
+      this.apiKey &&
+      (this.apiKey.startsWith('nietemo_sk_') || this.apiKey.startsWith('flit_sk_'))
+    ) {
       throw new NietemoError(
-        'CRITICAL SECURITY VIOLATION: Nietemo Secret Service Key (flit_sk_...) must NEVER be exposed in client-side browser code! ' +
-          'Use your Public Anon Key (flit_pk_...) in frontend applications, and keep Secret Keys strictly on your server.',
+        'CRITICAL SECURITY VIOLATION: Nietemo Secret Service Key (nietemo_sk_...) must NEVER be exposed in client-side browser code! ' +
+          'Use your Public Anon Key (nietemo_pk_...) in frontend applications, and keep Secret Keys strictly on your server.',
         'SECRET_KEY_EXPOSURE'
       );
     }

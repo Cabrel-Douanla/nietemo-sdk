@@ -18,8 +18,8 @@ export interface NietemoClientOptions {
   appId: string;
 
   /**
-   * Public Anon Key (flit_pk_...) or Secret Service Key (flit_sk_...)
-   * Note: Secret keys (flit_sk_...) are strictly rejected in browser environments for security.
+   * Public Anon Key (nietemo_pk_...) or Secret Service Key (nietemo_sk_...); the legacy flit_* prefixes
+   * are still accepted. Secret keys are strictly rejected in browser environments for security.
    */
   apiKey?: string;
 

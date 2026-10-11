@@ -49,6 +49,8 @@ export { NietemoStorage } from './storage';
 export { NietemoEmail } from './email';
 export { NietemoFunctions } from './functions';
 export * from './cookies';
+export * from './countries';
+export { SWINMO_INLINE_SCRIPT_URL, loadSwinmoInline } from './inline';
 export * from './errors';
 export * from './types';
 export default createClient;

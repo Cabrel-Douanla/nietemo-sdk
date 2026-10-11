@@ -61,7 +61,21 @@ describe('NietemoClient Core', () => {
     await expect(client.request('/missing')).rejects.toThrow(NietemoAPIError);
   });
 
-  it('CRITICAL SECURITY: should throw NietemoError if a Secret Key (flit_sk_) is passed in a browser environment', () => {
+  it('CRITICAL SECURITY: should reject a nietemo_sk_ secret key in a browser environment', () => {
+    vi.stubGlobal('window', {});
+
+    try {
+      expect(() => createClient({ appId: 'app_123', apiKey: 'nietemo_sk_live_secret_admin_key' })).toThrowError(
+        /CRITICAL SECURITY VIOLATION/
+      );
+      // The public key is fine in the browser.
+      expect(() => createClient({ appId: 'app_123', apiKey: 'nietemo_pk_live_public_key' })).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('CRITICAL SECURITY: should throw NietemoError if a legacy Secret Key (flit_sk_) is passed in a browser environment', () => {
     // Simulate browser window
     vi.stubGlobal('window', {});
 

@@ -10,7 +10,7 @@ Official TypeScript & JavaScript Client SDK for **Nietemo BaaS** (Backend-as-a-S
 ## Features
 
 - ⚡ **Zero-Config Database**: Instant document store powered by ACID PostgreSQL.
-- 📱 **Native Mobile Money**: Orange Money, MTN MoMo, Wave, Airtel Money, Moov, M-Pesa.
+- 📱 **Native Mobile Money**: Orange Money, MTN MoMo, Wave, Airtel Money, Moov, M-Pesa, Djamo and more, in 18 African countries (powered by Swinmo Pay).
 - ⚡ **Nietemo Server Functions**: Run custom serverless functions securely on Nietemo BaaS Cloud.
 - 🔑 **Social OAuth & Auth**: Google, Apple, Microsoft, GitHub, plus Email/Password, OTP, and Magic Links.
 - ☁️ **Cloudflare R2 Storage**: High-speed object & document storage with presigned URLs.
@@ -59,7 +59,7 @@ interface Product {
   stock: number;
 }
 
-const products = flit.collection<Product>('products');
+const products = nietemo.collection<Product>('products');
 
 // Query documents
 const items = await products.find({ category: 'shoes' }, { limit: 20, orderBy: 'price', order: 'desc' });
@@ -84,43 +84,66 @@ await products.update(newItem.id, {
 await products.delete(newItem.id);
 ```
 
-### 3. Mobile Money Payments (STK Push)
+### 3. Mobile Money Payments
 
-Trigger instant Mobile Money payment prompts directly on customer smartphones in Central and West Africa:
+`checkout()` opens the secure **Swinmo Pay** payment window, where the payer picks their country and operator
+(Orange Money, MTN MoMo, Wave, Moov, Airtel, M-Pesa… in 18 African countries) and enters their number. Your app needs
+no payment form: a "Pay" button is enough.
 
 ```typescript
-// Initiate STK Push payment
-const payment = await flit.payments.initiate({
-  operator: 'ORANGE', // 'ORANGE' | 'MTN' | 'WAVE' | 'AIRTEL' | 'MOOV' | 'MPESA'
-  phone: '+237690000000',
+const result = await nietemo.payments.checkout({
   amount: 35000,
-  currency: 'XAF', // 'XAF' | 'XOF' | 'KES' | 'GHS' | 'USD'
-  title: 'Commande #1042',
-  customerName: 'Jean Dupont',
+  currency: 'XAF',          // the payer is debited the equivalent in their own currency
+  title: 'Commande #1042',  // shown in the payment window
   metadata: { orderId: 'ord_1042' },
+  // optional: country: 'CM' (pre-selected), customer: { name, email, phone } (pre-filled)
 });
 
-console.log('Transaction started:', payment.transactionId);
-
-// Option A: Check status on demand
-const status = await flit.payments.getStatus(payment.transactionId);
-
-// Option B: Poll until user enters PIN and payment completes
-const finalResult = await flit.payments.waitForStatus(payment.transactionId, {
-  timeoutMs: 60000, // wait up to 1 minute
-  intervalMs: 3000,  // check every 3 seconds
-});
-
-if (finalResult.status === 'SUCCESS') {
-  console.log('Payment completed successfully!');
+switch (result.status) {
+  case 'SUCCESS':   /* paid and confirmed by the server */ break;
+  case 'PENDING':   /* the operator is still validating: check later with getStatus(result.transactionId) */ break;
+  case 'CANCELLED': /* the payer closed the window */ break;
+  default:          /* FAILED | EXPIRED */ console.log(result.errorMessage);
 }
 ```
+
+`checkout()` runs in the browser (call it from a click handler). Only `SUCCESS` means the money was received.
+
+#### Advanced: charge a known number
+
+On a server, or when the app already collected the payer's details, `initiate()` charges a number directly:
+
+```typescript
+const payment = await nietemo.payments.initiate({
+  operator: 'ORANGE',      // or a full code like 'ORANGE_CMR'
+  country: 'CM',           // optional when the phone has its dial code (+237…)
+  phone: '+237690000000',
+  amount: 35000,
+  currency: 'XAF',
+  title: 'Commande #1042',
+});
+
+console.log(payment.instruction); // prompt to show the payer, when the operator sends one
+
+const result = await nietemo.payments.waitForStatus(payment.transactionId, { timeoutMs: 120000 });
+```
+
+Supported countries and operators are exported for building selectors:
+
+```typescript
+import { MOBILE_MONEY_COUNTRIES, getMobileMoneyCountry } from 'nietemo';
+
+getMobileMoneyCountry('CI')?.operators; // ['ORANGE', 'MTN', 'WAVE', 'MOOV', 'DJAMO']
+```
+
+> **Test mode:** with a test key on the server, the last two digits of the phone number decide the outcome:
+> `…55` → insufficient funds, `…99` → PIN rejected, anything else succeeds (e.g. `690000000`).
 
 ### 4. User Authentication
 
 ```typescript
 // Register a new customer
-const { user, session } = await flit.auth.signUp({
+const { user, session } = await nietemo.auth.signUp({
   email: 'client@example.com',
   password: 'SecurePassword123!',
   name: 'Moussa Diop',
@@ -128,23 +151,23 @@ const { user, session } = await flit.auth.signUp({
 });
 
 // Sign in with password
-await flit.auth.signInWithPassword({
+await nietemo.auth.signInWithPassword({
   email: 'client@example.com',
   password: 'SecurePassword123!',
 });
 
 // Social Authentication (Google, Apple, Microsoft, GitHub)
-await flit.auth.signInWithGoogle({ redirectTo: '/dashboard' });
-// or: await flit.auth.signInWithApple();
-// or: await flit.auth.signInWithMicrosoft();
-// or: await flit.auth.signInWithGithub();
+await nietemo.auth.signInWithGoogle({ redirectTo: '/dashboard' });
+// or: await nietemo.auth.signInWithApple();
+// or: await nietemo.auth.signInWithMicrosoft();
+// or: await nietemo.auth.signInWithGithub();
 
 // Password Reset & Verification
-await flit.auth.sendPasswordResetEmail('client@example.com');
-await flit.auth.resetPassword({ email: 'client@example.com', code: '123456', newPassword: 'NewPassword456!' });
+await nietemo.auth.sendPasswordResetEmail('client@example.com');
+await nietemo.auth.resetPassword({ email: 'client@example.com', code: '123456', newPassword: 'NewPassword456!' });
 
 // Get current session
-const currentUser = flit.auth.getUser();
+const currentUser = nietemo.auth.getUser();
 ```
 
 ### 5. File & Document Storage (Cloudflare R2)
@@ -154,7 +177,7 @@ Store and retrieve user avatars, documents, and media with multi-tenant isolatio
 ```typescript
 // Upload a file (File, Blob, Buffer, or Uint8Array)
 const file = event.target.files[0];
-const uploaded = await flit.storage.upload(file, {
+const uploaded = await nietemo.storage.upload(file, {
   folder: 'avatars',
   customName: `user_${currentUser.id}.png`,
   isPublic: true,
@@ -163,10 +186,10 @@ const uploaded = await flit.storage.upload(file, {
 console.log('Public URL:', uploaded.publicUrl);
 
 // List files in a folder
-const files = await flit.storage.listFiles({ folder: 'avatars' });
+const files = await nietemo.storage.listFiles({ folder: 'avatars' });
 
 // Delete a file
-await flit.storage.delete(uploaded.id);
+await nietemo.storage.delete(uploaded.id);
 ```
 
 ### 6. Transactional Email via Resend
@@ -175,7 +198,7 @@ Send verified authentication emails or custom transactional messages:
 
 ```typescript
 // Send transactional email
-await flit.email.send({
+await nietemo.email.send({
   to: 'client@example.com',
   subject: 'Confirmation de votre commande #1042',
   html: '<p>Merci pour votre achat sur notre boutique !</p>',
@@ -187,8 +210,8 @@ await flit.email.send({
 Execute custom server-side logic, secret external API calls (e.g. OpenAI, Stripe), or sensitive calculations deployed on Nietemo BaaS Cloud:
 
 ```typescript
-// Invoke a server function deployed under flit/functions/calculate-tax.ts
-const { data, error } = await flit.functions.invoke('calculate-tax', {
+// Invoke a server function deployed as "calculate-tax"
+const { data, error } = await nietemo.functions.invoke('calculate-tax', {
   body: { orderId: 'ord_1042' },
 });
 
@@ -207,17 +230,17 @@ To protect against XSS (Cross-Site Scripting) and CSRF attacks, Nietemo SDK prov
 // In a Next.js 15 Route Handler, Server Action, or Node.js server:
 
 // 1. Create an encrypted HttpOnly Set-Cookie header upon login
-const setCookieHeader = await flit.auth.createSessionCookie(session);
-// Response header: flit_session=<aes-256-gcm-cipher>; Path=/; HttpOnly; Secure; SameSite=Lax
+const setCookieHeader = await nietemo.auth.createSessionCookie(session);
+// Response header: nietemo_session=<aes-256-gcm-cipher>; Path=/; HttpOnly; Secure; SameSite=Lax
 
 // 2. Decrypt and verify session on incoming requests
-const sessionPayload = await flit.auth.verifySessionCookie(req.headers.get('cookie'));
+const sessionPayload = await nietemo.auth.verifySessionCookie(req.headers.get('cookie'));
 if (sessionPayload) {
   console.log('Authenticated user:', sessionPayload.userId);
 }
 
 // 3. Destroy cookie upon logout
-const clearHeader = flit.auth.clearSessionCookie();
+const clearHeader = nietemo.auth.clearSessionCookie();
 ```
 
 In browser environments, the client automatically configures `credentials: 'include'` on all requests, so `HttpOnly` cookies are forwarded transparently without ever exposing tokens to `document.cookie` or `localStorage`.
@@ -230,8 +253,8 @@ When exporting your application from Nietemo to your personal VPS or GitHub:
 
 1. Add your credentials to `.env`:
    ```env
-   NEXT_PUBLIC_FLIT_APP_ID="your-application-uuid"
-   NEXT_PUBLIC_FLIT_API_KEY="flit_pk_live_your_public_key"
+   NEXT_PUBLIC_NIETEMO_APP_ID="your-application-uuid"
+   NEXT_PUBLIC_NIETEMO_API_KEY="nietemo_pk_live_your_public_key"
    ```
 2. Run your project natively with `npm run dev` or `docker compose up -d`.
 3. Your data and payment processing remain active without needing to configure or maintain your own PostgreSQL server.
@@ -240,4 +263,4 @@ When exporting your application from Nietemo to your personal VPS or GitHub:
 
 ## License
 
-MIT © [Nietemo Platform](https://flit.site)
+MIT © [Nietemo Platform](https://nietemo.site)
