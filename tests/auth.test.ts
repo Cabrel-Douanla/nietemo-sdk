@@ -83,3 +83,45 @@ describe('NietemoClient Auth Security & In-Memory Storage', () => {
     expect(store.has('nietemo_auth_session_app_123')).toBe(false);
   });
 });
+
+describe('Password confirmation and change', () => {
+  const session = { token: 'tok_1', expiresAt: Date.now() + 3600000, user: { id: 'u1', email: 'a@b.co', createdAt: '' } };
+  const okFetch = () =>
+    vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ success: true, session, user: session.user, message: 'ok' }),
+    });
+
+  it('signUp refuses mismatching confirmPassword before any request', async () => {
+    const fetch = okFetch();
+    const client = createClient({ appId: 'app_1', fetch });
+    await expect(
+      client.auth.signUp({ email: 'a@b.co', password: 'longpassword', confirmPassword: 'different1' })
+    ).rejects.toThrow('Passwords do not match');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('changePassword sends the session token and both passwords', async () => {
+    const fetch = okFetch();
+    const client = createClient({ appId: 'app_1', fetch });
+    await client.auth.signInWithPassword({ email: 'a@b.co', password: 'longpassword' });
+    fetch.mockClear();
+
+    await client.auth.changePassword({ currentPassword: 'longpassword', newPassword: 'another-long-one' });
+
+    const [url, init] = fetch.mock.calls[0];
+    expect(String(url)).toContain('/api/baas/auth/change-password');
+    expect(init.headers.Authorization).toBe('Bearer tok_1');
+    expect(JSON.parse(init.body)).toMatchObject({ currentPassword: 'longpassword', newPassword: 'another-long-one' });
+  });
+
+  it('changePassword requires a signed-in user and matching confirmation', async () => {
+    const client = createClient({ appId: 'app_1', fetch: okFetch() });
+    await expect(client.auth.changePassword({ currentPassword: 'a', newPassword: 'b' })).rejects.toThrow('signed in');
+    await client.auth.signInWithPassword({ email: 'a@b.co', password: 'longpassword' });
+    await expect(
+      client.auth.changePassword({ currentPassword: 'a', newPassword: 'b1234567', confirmPassword: 'c1234567' })
+    ).rejects.toThrow('Passwords do not match');
+  });
+});

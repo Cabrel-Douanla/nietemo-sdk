@@ -8,6 +8,7 @@ import type {
   SignUpCredentials,
   SignInWithOAuthOptions,
   PasswordResetConfirmOptions,
+  ChangePasswordOptions,
   VerifyEmailOptions,
   MagicLinkOptions,
   AuthActionResponse,
@@ -112,6 +113,9 @@ export class NietemoAuth {
   public async signUp(credentials: SignUpCredentials): Promise<AuthResponse> {
     if (!credentials.email) {
       throw new NietemoAuthError('Email is required for registration');
+    }
+    if (credentials.confirmPassword !== undefined && credentials.confirmPassword !== credentials.password) {
+      throw new NietemoAuthError('Passwords do not match');
     }
 
     try {
@@ -340,6 +344,30 @@ export class NietemoAuth {
         action: 'confirm',
         ...options,
       }),
+    });
+  }
+
+  /**
+   * Change the password of the signed-in user. Requires the current password.
+   * @example
+   * await nietemo.auth.changePassword({ currentPassword: 'ancien', newPassword: 'nouveau-mot-de-passe' });
+   */
+  public async changePassword(options: ChangePasswordOptions): Promise<AuthActionResponse> {
+    if (!options.currentPassword || !options.newPassword) {
+      throw new NietemoAuthError('currentPassword and newPassword are required');
+    }
+    if (options.confirmPassword !== undefined && options.confirmPassword !== options.newPassword) {
+      throw new NietemoAuthError('Passwords do not match');
+    }
+    const token = this.getSession()?.token;
+    if (!token) {
+      throw new NietemoAuthError('You must be signed in to change your password');
+    }
+
+    return this.client.request<AuthActionResponse>('/api/baas/auth/change-password', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ appId: this.client.appId, ...options }),
     });
   }
 

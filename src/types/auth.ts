@@ -26,6 +26,8 @@ export interface AuthSession {
 export interface SignUpCredentials {
   email: string;
   password?: string;
+  /** Optional: when provided, sign-up fails unless it equals `password`. */
+  confirmPassword?: string;
   name?: string;
   phone?: string;
   metadata?: Record<string, any>;
@@ -62,6 +64,13 @@ export interface PasswordResetConfirmOptions {
   token?: string;
   code?: string;
   newPassword: string;
+}
+
+export interface ChangePasswordOptions {
+  currentPassword: string;
+  newPassword: string;
+  /** Optional: when provided, it must equal `newPassword`. */
+  confirmPassword?: string;
 }
 
 export interface VerifyEmailOptions {
