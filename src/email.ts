@@ -12,10 +12,13 @@ export class NietemoEmail {
   /**
    * Send a transactional email via Nietemo BaaS (Resend)
    *
+   * From the app's browser code the recipient must be the signed-in user (receipts, notifications). To write to
+   * anyone else, send the e-mail from a server function with `context.nietemo.email.send`.
+   *
    * @example
    * ```typescript
    * await flit.email.send({
-   *   to: 'client@example.com',
+   *   to: user.email, // the signed-in user
    *   subject: 'Confirmation de commande',
    *   html: '<h1>Merci pour votre achat !</h1>',
    * });
@@ -30,8 +33,11 @@ export class NietemoEmail {
     }
 
     try {
+      // From the browser, Nietemo only sends to the signed-in user's own address: it needs their session.
+      const sessionToken = this.client.auth.getSession()?.token;
       const res = await this.client.request<SendEmailResponse>('/api/baas/email/send', {
         method: 'POST',
+        headers: sessionToken ? { 'X-Nietemo-User-Token': sessionToken } : undefined,
         body: JSON.stringify({
           appId: this.client.appId,
           ...options,
